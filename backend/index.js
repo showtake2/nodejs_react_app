@@ -10,8 +10,9 @@ app.disable('etag');
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-app.get('/', (req, res) => res.render('pages/index'));
-
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+  });
 app.get('/api', (req, res) => {
   res.json({ message: 'Hello World!' });
 });
@@ -23,7 +24,7 @@ app.get('/login', (req, res) => {
     .post('https://api.line.me/oauth2/v2.1/token', {
       grant_type: 'authorization_code',
       code: req.query.code,
-      redirect_uri: 'https://showtake3.herokuapp.com/callback',
+      redirect_uri: 'https://showtake3-7d4f5d47d49f.herokuapp.com/callback',
       client_id: process.env.LINECORP_PLATFORM_CHANNEL_CHANNELID,
       client_secret: process.env.LINECORP_PLATFORM_CHANNEL_CHANNELSECRET,
     })
