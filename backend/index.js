@@ -1,12 +1,11 @@
 const express = require('express');
 const app = express();
 const path = require('path');
-const request = require('request');
-const querystring = require('querystring');
+const axios = require('axios'); // 'axios' モジュールをインポート
 
 const port = process.env.PORT || 3001;
 
-app.use(express.static(path.join(__dirname, 'public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.disable('etag');
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -18,48 +17,42 @@ app.get('/api', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  const query = querystring.stringify({
-    response_type: 'code',
-    client_id: process.env.LINECORP_PLATFORM_CHANNEL_CHANNELID,
-    redirect_uri: 'https://nodejsreactshowtake.herokuapp.com/callback',
-    state: 'hoge', // TODO: must generate random string
-    scope: 'profile',
-  });
-  res.redirect(301, 'https://access.line.me/oauth2/v2.1/authorize?' + query);
-});
-
-app.get('/callback', (req, res) => {
-  request.post({
-    url: `https://api.line.me/oauth2/v2.1/token`,
-    form: {
-      grant_type: "authorization_code",
+  // ここで 'axios' を使用したHTTPリクエストを行う
+  // 以前の 'request' モジュールのコードを 'axios' に変更
+  axios
+    .post('https://api.line.me/oauth2/v2.1/token', {
+      grant_type: 'authorization_code',
       code: req.query.code,
-      redirect_uri: 'https://nodejsreactshowtake.herokuapp.com/callback',
+      redirect_uri: 'https://showtake3.herokuapp.com/callback',
       client_id: process.env.LINECORP_PLATFORM_CHANNEL_CHANNELID,
       client_secret: process.env.LINECORP_PLATFORM_CHANNEL_CHANNELSECRET,
-    }
-  }, (error, response, body) => {
-    if (response.statusCode != 200) {
+    })
+    .then((response) => {
+      if (response.status !== 200) {
+        res.send(response.data);
+      } else {
+        // 以前の 'request' モジュールのコードを 'axios' に変更
+        axios
+          .get('https://api.line.me/v2/profile', {
+            headers: {
+              Authorization: 'Bearer ' + response.data.access_token,
+            },
+          })
+          .then((profileResponse) => {
+            if (profileResponse.status !== 200) {
+              res.send(profileResponse.data);
+            } else {
+              res.send(profileResponse.data);
+            }
+          })
+          .catch((error) => {
+            res.send(error);
+          });
+      }
+    })
+    .catch((error) => {
       res.send(error);
-      return;
-    }
-    request.get({
-      url: 'https://api.line.me/v2/profile',
-      headers: {
-        'Authorization': 'Bearer ' + JSON.parse(body).access_token
-      }
-    }, (error, response, body) => {
-      if (response.statusCode != 200) {
-        res.send(error);
-        return;
-      }
-      res.send(body);
     });
-  });
-});
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
 });
 
 app.listen(port, () => {
